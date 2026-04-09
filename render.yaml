@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: autoResearch
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --worker-class gevent --workers 1 --timeout 900 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # set manually in Render dashboard
+      - key: MODEL
+        value: claude-sonnet-4-6
+      - key: MAX_PAPERS
+        value: "10"
+      - key: OUTPUT_DIR
+        value: /tmp/outputs  # ephemeral but safe on Render
+    autoDeploy: true
