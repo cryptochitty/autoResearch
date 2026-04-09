@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoResearch — Multi-Agent AI Research System</title>
+
+  <!-- Markdown + syntax highlighting from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <style>
+    /* ── Reset & variables ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --accent2:   #bc8cff;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --red:       #f85149;
+      --radius:    10px;
+      --font:      'Segoe UI', system-ui, -apple-system, sans-serif;
+      --mono:      'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Shared utilities ──────────────────────────────────────────── */
+    .hidden  { display: none !important; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 20px; border-radius: var(--radius);
+      border: none; cursor: pointer; font-size: 14px; font-weight: 600;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:hover  { opacity: .85; }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--accent);  color: #000; }
+    .btn-ghost   { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn-sm      { padding: 5px 12px; font-size: 12px; }
+
+    /* ── LANDING ───────────────────────────────────────────────────── */
+    #screen-landing {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .landing-logo {
+      font-size: 13px; font-weight: 700; letter-spacing: .25em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 12px;
+    }
+
+    .landing-title {
+      font-size: clamp(28px, 5vw, 52px);
+      font-weight: 800; text-align: center; line-height: 1.15;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+
+    .landing-sub {
+      color: var(--muted); text-align: center; max-width: 520px;
+      margin-bottom: 40px; font-size: 16px;
+    }
+
+    .input-row {
+      display: flex; gap: 10px; width: 100%; max-width: 680px;
+    }
+
+    #topic-input {
+      flex: 1; padding: 14px 18px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text); font-size: 15px;
+      outline: none; transition: border-color .2s;
+    }
+    #topic-input:focus { border-color: var(--accent); }
+    #topic-input::placeholder { color: var(--muted); }
+
+    .examples {
+      margin-top: 24px; display: flex; flex-wrap: wrap; gap: 8px;
+      justify-content: center; max-width: 680px;
+    }
+    .example-chip {
+      padding: 6px 14px; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); font-size: 13px; cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .example-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+    .features {
+      margin-top: 56px; display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px; max-width: 760px; width: 100%;
+    }
+    .feature-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px; text-align: center;
+    }
+    .feature-icon { font-size: 28px; margin-bottom: 8px; }
+    .feature-title { font-weight: 600; font-size: 13px; color: var(--text); }
+    .feature-desc  { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* ── PROGRESS ──────────────────────────────────────────────────── */
+    #screen-progress {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      grid-template-rows: 60px 1fr;
+    }
+
+    /* Top bar */
+    .topbar {
+      grid-column: 1 / -1;
+      display: flex; align-items: center; gap: 16px;
+      padding: 0 24px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .topbar-title { font-weight: 700; font-size: 15px; color: var(--accent); }
+    .topbar-topic { color: var(--muted); font-size: 13px; flex: 1;
+                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .progress-bar-wrap { flex: 1; max-width: 260px; }
+    .progress-bar-track {
+      height: 6px; background: var(--border); border-radius: 999px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; background: var(--accent); border-radius: 999px;
+      transition: width .5s ease; width: 0%;
+    }
+    .progress-label { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* Sidebar: agent cards */
+    .sidebar {
+      padding: 20px 16px; overflow-y: auto;
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .sidebar-heading {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--muted); margin-bottom: 4px;
+    }
+
+    .agent-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px;
+      border: 1px solid transparent;
+      transition: border-color .2s, background .2s;
+    }
+    .agent-card.waiting  { color: var(--muted); }
+    .agent-card.running  { border-color: var(--accent); background: rgba(88,166,255,.06); }
+    .agent-card.done     { border-color: var(--border); }
+
+    .agent-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+
+    .agent-info { flex: 1; min-width: 0; }
+    .agent-name { font-size: 13px; font-weight: 600; white-space: nowrap;
+                  overflow: hidden; text-overflow: ellipsis; }
+    .agent-sub  { font-size: 11px; color: var(--muted); }
+
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: var(--border);
+    }
+    .agent-card.running .status-dot  { background: var(--accent); animation: pulse 1.2s infinite; }
+    .agent-card.done    .status-dot  { background: var(--green); }
+    .agent-card.error   .status-dot  { background: var(--red); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .3; }
+    }
+
+    /* Main content area */
+    .main-area {
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    .log-container {
+      flex: 1; overflow-y: auto;
+      padding: 20px 24px; font-family: var(--mono); font-size: 12.5px;
+      line-height: 1.7; color: var(--muted);
+    }
+    .log-entry        { margin-bottom: 2px; }
+    .log-entry.info   { color: var(--muted); }
+    .log-entry.event  { color: var(--accent); }
+    .log-entry.done   { color: var(--green); }
+    .log-entry.error  { color: var(--red); }
+
+    /* ── RESULTS ───────────────────────────────────────────────────── */
+    #screen-results {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    .results-topbar {
+      display: flex; align-items: center; gap: 12px; padding: 14px 24px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .results-topbar h1 { font-size: 16px; flex: 1; }
+    .results-meta      { font-size: 12px; color: var(--muted); }
+
+    /* Tab bar */
+    .tab-bar {
+      display: flex; gap: 2px; padding: 0 24px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      overflow-x: auto; flex-shrink: 0;
+    }
+    .tab {
+      padding: 10px 16px; font-size: 13px; cursor: pointer;
+      border-bottom: 2px solid transparent; color: var(--muted);
+      white-space: nowrap; transition: color .15s;
+      user-select: none;
+    }
+    .tab:hover  { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* Content panels */
+    .panels { flex: 1; overflow-y: auto; padding: 28px 32px; max-width: 960px; }
+    .panel  { display: none; }
+    .panel.active { display: block; }
+
+    /* Markdown rendering */
+    .md-body h1, .md-body h2, .md-body h3, .md-body h4 {
+      color: var(--text); margin: 1.4em 0 .5em; font-weight: 700;
+    }
+    .md-body h1 { font-size: 1.6em; }
+    .md-body h2 { font-size: 1.3em; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .md-body h3 { font-size: 1.1em; }
+    .md-body p  { margin: .6em 0; color: var(--text); }
+    .md-body ul, .md-body ol { padding-left: 24px; margin: .6em 0; }
+    .md-body li { margin: .3em 0; }
+    .md-body blockquote {
+      border-left: 3px solid var(--accent); padding-left: 14px;
+      color: var(--muted); margin: .8em 0;
+    }
+    .md-body table {
+      border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 13px;
+    }
+    .md-body th, .md-body td {
+      border: 1px solid var(--border); padding: 8px 12px; text-align: left;
+    }
+    .md-body th { background: var(--surface); font-weight: 700; }
+    .md-body tr:nth-child(even) { background: rgba(255,255,255,.02); }
+    .md-body a    { color: var(--accent); }
+    .md-body hr   { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+    .md-body strong { color: var(--text); font-weight: 700; }
+    .md-body em     { color: var(--accent2); }
+
+    /* Code blocks */
+    .code-wrap { position: relative; margin: 1em 0; }
+    .code-wrap pre {
+      background: #0d1117 !important; border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; overflow-x: auto;
+      font-family: var(--mono); font-size: 13px;
+    }
+    .copy-btn {
+      position: absolute; top: 8px; right: 8px;
+      padding: 4px 10px; font-size: 11px; font-weight: 600;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--muted); cursor: pointer;
+      transition: color .15s;
+    }
+    .copy-btn:hover { color: var(--text); }
+    .copy-btn.copied { color: var(--green); }
+
+    /* Error banner */
+    .error-banner {
+      margin: 16px 0; padding: 14px 18px;
+      background: rgba(248,81,73,.1); border: 1px solid var(--red);
+      border-radius: var(--radius); color: var(--red);
+    }
+
+    /* ── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      #screen-progress {
+        grid-template-columns: 1fr;
+        grid-template-rows: 60px auto 1fr;
+      }
+      .sidebar { grid-row: 2; border-right: none; border-bottom: 1px solid var(--border); }
+      .main-area { grid-row: 3; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ LANDING ═══════════════════════════════ -->
+<div id="screen-landing">
+  <div class="landing-logo">🧠 AutoResearch</div>
+  <h1 class="landing-title">Multi-Agent AI Research System</h1>
+  <p class="landing-sub">
+    Type a research topic. 8 AI agents will search papers, analyse them,
+    generate a novel idea, write a full IEEE paper, build prototype code, and pitch it.
+  </p>
+
+  <div class="input-row">
+    <input id="topic-input" type="text"
+           placeholder="e.g. AI for Crop Yield Prediction using weather + soil data"
+           autocomplete="off" />
+    <button class="btn btn-primary" onclick="startResearch()">
+      ▶ &nbsp;Start
+    </button>
+  </div>
+
+  <div class="examples">
+    <span class="example-chip" onclick="setTopic(this)">Transformer models for time-series forecasting</span>
+    <span class="example-chip" onclick="setTopic(this)">Federated learning for medical imaging privacy</span>
+    <span class="example-chip" onclick="setTopic(this)">LLM hallucination detection and mitigation</span>
+    <span class="example-chip" onclick="setTopic(this)">Autonomous drone swarm path planning</span>
+    <span class="example-chip" onclick="setTopic(this)">Graph neural networks for drug discovery</span>
+  </div>
+
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">📚</div>
+      <div class="feature-title">Paper Discovery</div>
+      <div class="feature-desc">arXiv + web search, 10–15 papers</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <div class="feature-title">Deep Analysis</div>
+      <div class="feature-desc">Per-paper breakdown + cross-paper patterns</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💡</div>
+      <div class="feature-title">Novel Idea</div>
+      <div class="feature-desc">Gap identification + scored ideas</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📝</div>
+      <div class="feature-title">Full IEEE Paper</div>
+      <div class="feature-desc">2 000+ word academic paper</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚙️</div>
+      <div class="feature-title">Prototype Code</div>
+      <div class="feature-desc">Runnable Python ML implementation</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎤</div>
+      <div class="feature-title">Pitch Ready</div>
+      <div class="feature-desc">ELI5 + 60-second hackathon pitch</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ PROGRESS ══════════════════════════════ -->
+<div id="screen-progress" class="hidden">
+  <!-- Top bar -->
+  <div class="topbar">
+    <span class="topbar-title">🧠 AutoResearch</span>
+    <span class="topbar-topic" id="progress-topic"></span>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-label" id="progress-label">Starting…</div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-heading">Agents</div>
+    <!-- Cards injected by JS -->
+    <div id="agent-cards"></div>
+  </div>
+
+  <!-- Log -->
+  <div class="main-area">
+    <div class="log-container" id="log-container">
+      <div class="log-entry info">Connecting…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ RESULTS ═══════════════════════════════ -->
+<div id="screen-results" class="hidden">
+  <div class="results-topbar">
+    <h1>📄 Research Report</h1>
+    <span class="results-meta" id="results-meta"></span>
+    <button class="btn btn-ghost btn-sm" id="btn-download" onclick="downloadReport()">
+      ⬇ Download .md
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="showLanding()">
+      + New Research
+    </button>
+  </div>
+
+  <div class="tab-bar" id="tab-bar"></div>
+  <div class="panels" id="panels"></div>
+</div>
+
+<!-- ═══════════════════════════ SCRIPTS ═══════════════════════════════ -->
+<script>
+  // ── State ──────────────────────────────────────────────────────────
+  let sessionId = null;
+  let eventSource = null;
+
+  const AGENTS = [
+    { icon: "🔭", name: "Discovery Agent",   sub: "Finds papers" },
+    { icon: "📖", name: "Reader Agent",       sub: "Analyses papers" },
+    { icon: "💡", name: "Innovation Agent",   sub: "Generates ideas" },
+    { icon: "🧪", name: "Validation Agent",   sub: "Designs experiment" },
+    { icon: "✍️",  name: "Writer Agent",       sub: "Writes paper" },
+    { icon: "⚙️",  name: "Builder Agent",      sub: "Builds prototype" },
+    { icon: "📊", name: "Evaluation Agent",   sub: "Benchmarks results" },
+    { icon: "🎤", name: "Explainer Agent",    sub: "Pitches the idea" },
+  ];
+
+  const SECTIONS = [
+    "📚 Papers Found",
+    "🔍 Analysis Summary",
+    "💡 Proposed Idea",
+    "🧪 Experiment Plan",
+    "📝 Research Paper",
+    "⚙️ Prototype Code",
+    "📊 Evaluation",
+    "🎤 Explanation & Pitch",
+  ];
+
+  // ── Screens ────────────────────────────────────────────────────────
+  function show(id) {
+    ['screen-landing','screen-progress','screen-results'].forEach(s => {
+      document.getElementById(s).classList.toggle('hidden', s !== id);
+    });
+  }
+
+  function showLanding() {
+    if (eventSource) { eventSource.close(); eventSource = null; }
+    sessionId = null;
+    show('screen-landing');
+  }
+
+  // ── Landing ────────────────────────────────────────────────────────
+  function setTopic(el) {
+    document.getElementById('topic-input').value = el.textContent;
+  }
+
+  document.getElementById('topic-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') startResearch();
+  });
+
+  async function startResearch() {
+    const topic = document.getElementById('topic-input').value.trim();
+    if (!topic) return;
+
+    // Build agent cards
+    const container = document.getElementById('agent-cards');
+    container.innerHTML = '';
+    AGENTS.forEach((a, i) => {
+      const card = document.createElement('div');
+      card.className = 'agent-card waiting';
+      card.id = `agent-card-${i}`;
+      card.innerHTML = `
+        <div class="agent-icon">${a.icon}</div>
+        <div class="agent-info">
+          <div class="agent-name">${a.name}</div>
+          <div class="agent-sub">${a.sub}</div>
+        </div>
+        <div class="status-dot" id="dot-${i}"></div>
+      `;
+      container.appendChild(card);
+    });
+
+    document.getElementById('progress-topic').textContent = topic;
+    document.getElementById('log-container').innerHTML =
+      '<div class="log-entry info">Starting research pipeline…</div>';
+    setProgress(0, 'Starting…');
+    show('screen-progress');
+
+    // POST /start
+    let res;
+    try {
+      res = await fetch('/start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ topic }),
+      });
+    } catch(e) {
+      appendLog(`Connection error: ${e.message}`, 'error');
+      return;
+    }
+    const data = await res.json();
+    if (data.error) { appendLog(data.error, 'error'); return; }
+    sessionId = data.session_id;
+
+    // Subscribe to SSE
+    eventSource = new EventSource(`/stream/${sessionId}`);
+    eventSource.onmessage = handleEvent;
+    eventSource.onerror   = () => appendLog('Stream connection lost.', 'error');
+  }
+
+  // ── Progress helpers ───────────────────────────────────────────────
+  function setProgress(pct, label) {
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = label;
+  }
+
+  function setAgentState(i, state) {
+    if (i < 0 || i >= AGENTS.length) return;
+    const card = document.getElementById(`agent-card-${i}`);
+    if (!card) return;
+    card.className = `agent-card ${state}`;
+  }
+
+  function appendLog(msg, cls = 'info') {
+    const el = document.createElement('div');
+    el.className = `log-entry ${cls}`;
+    el.textContent = msg;
+    const container = document.getElementById('log-container');
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // ── SSE event handler ──────────────────────────────────────────────
+  function handleEvent(e) {
+    let evt;
+    try { evt = JSON.parse(e.data); } catch { return; }
+
+    switch (evt.type) {
+
+      case 'connected':
+        appendLog(`Connected — topic: "${evt.topic}"`, 'event');
+        break;
+
+      case 'start':
+        appendLog(`Pipeline started — ${evt.total} agents queued`, 'event');
+        setProgress(2, 'Agent 1 of 8…');
+        setAgentState(0, 'running');
+        break;
+
+      case 'agent_start':
+        appendLog(`▶ ${AGENTS[evt.step]?.name || 'Agent'} starting…`, 'event');
+        setAgentState(evt.step, 'running');
+        break;
+
+      case 'step':
+        appendLog(`  · ${evt.message}`, 'info');
+        break;
+
+      case 'task_done': {
+        const step = evt.step;
+        setAgentState(step, 'done');
+        const pct = Math.round(((step + 1) / 8) * 100);
+        const next = step + 1;
+        setProgress(pct, next < 8 ? `Agent ${next + 1} of 8…` : 'Finishing…');
+        appendLog(`✔ ${evt.label} complete`, 'done');
+        if (evt.preview) appendLog(`  ${evt.preview.slice(0, 120)}…`, 'info');
+        if (next < 8) setAgentState(next, 'running');
+        break;
+      }
+
+      case 'complete':
+        eventSource.close();
+        setProgress(100, 'Complete!');
+        AGENTS.forEach((_, i) => setAgentState(i, 'done'));
+        appendLog('🎉 Research complete! Loading results…', 'done');
+        setTimeout(() => showResults(evt.results), 800);
+        break;
+
+      case 'error':
+        appendLog(`Error: ${evt.message}`, 'error');
+        break;
+
+      case 'ping':
+        break; // keepalive — ignore
+    }
+  }
+
+  // ── Results ────────────────────────────────────────────────────────
+  function showResults(results) {
+    const tabBar  = document.getElementById('tab-bar');
+    const panels  = document.getElementById('panels');
+    tabBar.innerHTML = '';
+    panels.innerHTML = '';
+
+    SECTIONS.forEach((label, i) => {
+      // Tab
+      const tab = document.createElement('div');
+      tab.className = `tab${i === 0 ? ' active' : ''}`;
+      tab.textContent = label;
+      tab.onclick = () => switchTab(i);
+      tabBar.appendChild(tab);
+
+      // Panel
+      const panel = document.createElement('div');
+      panel.className = `panel${i === 0 ? ' active' : ''}`;
+      panel.id = `panel-${i}`;
+
+      const raw = results[label] || '(no output)';
+
+      if (label.includes('Code')) {
+        // Show as fenced code blocks without double-markdown wrapping
+        panel.innerHTML = renderCode(raw);
+      } else {
+        panel.innerHTML = `<div class="md-body">${marked.parse(raw)}</div>`;
+      }
+
+      panels.appendChild(panel);
+    });
+
+    // Wire up copy buttons
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.onclick = () => {
+        const code = btn.nextElementSibling.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+          btn.textContent = '✓ Copied';
+          btn.classList.add('copied');
+          setTimeout(() => {
+            btn.textContent = 'Copy';
+            btn.classList.remove('copied');
+          }, 2000);
+        });
+      };
+    });
+
+    // Apply highlight.js
+    document.querySelectorAll('pre code').forEach(block => {
+      hljs.highlightElement(block);
+    });
+
+    document.getElementById('results-meta').textContent =
+      `Topic: ${document.getElementById('topic-input').value}`;
+
+    show('screen-results');
+  }
+
+  function switchTab(i) {
+    document.querySelectorAll('.tab').forEach((t, j)  => t.classList.toggle('active', i === j));
+    document.querySelectorAll('.panel').forEach((p, j) => p.classList.toggle('active', i === j));
+  }
+
+  // Render raw text that may contain # === filename === delimiters
+  function renderCode(raw) {
+    // Split on file delimiters: # === something ===
+    const parts = raw.split(/(#\s*={3,}\s*.+?\s*={3,})/);
+    let html = '';
+    let currentFile = null;
+    for (const part of parts) {
+      const header = part.match(/^#\s*={3,}\s*(.+?)\s*={3,}$/);
+      if (header) {
+        currentFile = header[1].trim();
+        html += `<h3 style="margin:1.5em 0 .4em;color:var(--accent);font-family:var(--mono);font-size:13px">📄 ${currentFile}</h3>`;
+      } else if (part.trim()) {
+        // Try to detect language from file extension
+        const ext = (currentFile || '').split('.').pop();
+        const lang = { py: 'python', txt: 'text', md: 'markdown', js: 'javascript' }[ext] || 'python';
+        html += `<div class="code-wrap">
+          <button class="copy-btn">Copy</button>
+          <pre><code class="language-${lang}">${escHtml(part.trim())}</code></pre>
+        </div>`;
+      }
+    }
+    // If no delimiters found, just render the whole thing as code
+    if (!html) {
+      html = `<div class="code-wrap">
+        <button class="copy-btn">Copy</button>
+        <pre><code class="language-python">${escHtml(raw.trim())}</code></pre>
+      </div>`;
+    }
+    return html;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Download ───────────────────────────────────────────────────────
+  function downloadReport() {
+    if (!sessionId) return;
+    window.location = `/download/${sessionId}`;
+  }
+</script>
+</body>
+</html>
