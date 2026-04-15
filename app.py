@@ -11,11 +11,13 @@ import uuid
 import os
 from datetime import datetime, timedelta
 from flask import Flask, Response, jsonify, render_template, request, send_file
+from flask_cors import CORS
 import anthropic
 
 from crew import run_research_streamed, SECTION_LABELS, OUTPUT_DIR
 
 app = Flask(__name__)
+CORS(app)
 
 # session_id → {"queue": Queue, "status": str, "started": datetime}
 _sessions: dict[str, dict] = {}
