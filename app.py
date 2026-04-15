@@ -11,6 +11,7 @@ import uuid
 import os
 from datetime import datetime, timedelta
 from flask import Flask, Response, jsonify, render_template, request, send_file
+import anthropic
 
 from crew import run_research_streamed, SECTION_LABELS, OUTPUT_DIR
 
@@ -134,6 +135,37 @@ def download(session_id: str):
         as_attachment=True,
         download_name=f"research_{slug}.md",
     )
+
+
+@app.route("/ai/ask", methods=["POST"])
+def ai_ask():
+    """Simple AI Q&A endpoint for mobile app."""
+    data = request.get_json(force=True)
+    prompt = (data.get("prompt") or "").strip()
+    tier = data.get("tier", "free")
+
+    if not prompt:
+        return jsonify({"error": "prompt is required"}), 400
+
+    system = (
+        "You are an advanced AI assistant. Give detailed, comprehensive answers."
+        if tier == "premium"
+        else "You are a helpful AI assistant. Give concise answers under 200 words."
+    )
+
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=2048 if tier == "premium" else 512,
+        system=system,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return jsonify({"response": message.content[0].text})
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
 
 
 if __name__ == "__main__":
